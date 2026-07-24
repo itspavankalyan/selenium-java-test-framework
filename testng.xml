@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+    Default full-suite entry point (`mvn test` picks this up via the
+    surefire config in pom.xml). CI instead targets the three layer-specific
+    suite files below so a UI flake doesn't block the API/DB jobs from
+    reporting their own pass/fail independently.
+-->
+<suite name="SeleniumJavaTestFrameworkSuite" verbose="1">
+    <test name="UI-Login-Tests">
+        <classes>
+            <class name="com.portfolio.tests.ui.LoginTest"/>
+        </classes>
+    </test>
+
+    <test name="API-Booking-Chain-Tests">
+        <classes>
+            <class name="com.portfolio.tests.api.BookingApiChainTest"/>
+        </classes>
+    </test>
+
+    <test name="DB-Validation-Tests">
+        <classes>
+            <class name="com.portfolio.tests.db.BookingDatabaseValidationTest"/>
+        </classes>
+    </test>
+</suite>

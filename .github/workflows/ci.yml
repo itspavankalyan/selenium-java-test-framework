@@ -1,0 +1,96 @@
+name: CI
+
+# Runs on every push/PR against main so the framework's own test suite acts
+# as a live status badge for the repo — a recruiter or interviewer can see
+# at a glance whether the current commit's tests actually pass.
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  # Split into one job per layer (rather than a single `mvn test` job) so a
+  # UI flake (the layer most exposed to browser/network timing) doesn't hide
+  # whether the API and DB layers are green — each gets its own pass/fail
+  # signal and its own log output.
+  ui-tests:
+    name: UI Tests (Selenium / saucedemo.com)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      # ubuntu-latest ships Chrome pre-installed; WebDriverManager (see
+      # DriverFactory) resolves the matching chromedriver at runtime, so no
+      # manual driver download/pinning step is needed here.
+      - name: Run UI test suite (headless Chrome)
+        run: mvn test -Dsurefire.suiteXmlFiles=testng-ui.xml -Dheadless=true
+
+      - name: Upload failure screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-failure-screenshots
+          path: target/screenshots/
+          if-no-files-found: ignore
+
+      - name: Upload Surefire report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-surefire-report
+          path: target/surefire-reports/
+
+  api-tests:
+    name: API Tests (RestAssured / restful-booker)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Run API chain test suite
+        run: mvn test -Dsurefire.suiteXmlFiles=testng-api.xml
+
+      - name: Upload Surefire report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-surefire-report
+          path: target/surefire-reports/
+
+  db-tests:
+    name: DB Validation Tests (JDBC / H2)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Run DB validation test suite
+        run: mvn test -Dsurefire.suiteXmlFiles=testng-db.xml
+
+      - name: Upload Surefire report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-surefire-report
+          path: target/surefire-reports/

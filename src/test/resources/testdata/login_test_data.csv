@@ -1,0 +1,15 @@
+testCaseId,username,password,expectedOutcome,expectedMessageContains
+TC01,standard_user,secret_sauce,SUCCESS,
+TC02,problem_user,secret_sauce,SUCCESS,
+TC03,performance_glitch_user,secret_sauce,SUCCESS,
+TC04,error_user,secret_sauce,SUCCESS,
+TC05,visual_user,secret_sauce,SUCCESS,
+TC06,locked_out_user,secret_sauce,FAILURE,locked out
+TC07,standard_user,wrong_password,FAILURE,do not match
+TC08,invalid_user,secret_sauce,FAILURE,do not match
+TC09,invalid_user,wrong_password,FAILURE,do not match
+TC10,,secret_sauce,FAILURE,Username is required
+TC11,standard_user,,FAILURE,Password is required
+TC12,,,FAILURE,Username is required
+TC13,Standard_User,secret_sauce,FAILURE,do not match
+TC14,standard_user ,secret_sauce,FAILURE,do not match
