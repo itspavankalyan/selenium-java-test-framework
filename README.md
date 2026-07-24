@@ -15,13 +15,6 @@ scripts:
 4. **Database-level validation**
 5. **CI/CD pipeline integration**
 
-## Why this project exists
-
-Many automation repos are a grab-bag of unrelated scripts — a login test
-here, an isolated API GET there. This repo is built the other way around:
-one framework, where each layer builds on the one below it, closer to how a
-real test framework grows inside a company. The goal is a repo that holds up
-under a code review, not just a repo that runs.
 
 ## Architecture
 
