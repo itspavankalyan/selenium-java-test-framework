@@ -39,13 +39,16 @@ selenium-java-test-framework/
     ├── framework/
     │   ├── base/       # DriverFactory, BaseTest (ThreadLocal WebDriver), ScreenshotUtil
     │   ├── config/     # ConfigReader
-    │   ├── pages/       # Page objects (BasePage, LoginPage, InventoryPage)
+    │   ├── pages/       # Page objects (BasePage, LoginPage, InventoryPage,
+    │   │                 CartPage, CheckoutInformationPage, CheckoutOverviewPage,
+    │   │                 CheckoutCompletePage)
     │   ├── utils/       # CsvTestDataReader, LoginCredentials
     │   ├── api/         # BookingApiClient + request/response models
     │   ├── db/          # DbConnectionManager, BookingAuditRepository
     │   └── listeners/   # ExtentManager, ExtentTestListener (HTML reporting)
     └── tests/
-        ├── ui/   LoginTest.java                    (Layer 1 + 2)
+        ├── ui/   LoginTest.java              (Layer 1 + 2)
+        │         CheckoutWorkflowTest.java   (Layer 1, multi-page E2E)
         ├── api/  BookingApiChainTest.java           (Layer 3)
         └── db/   BookingDatabaseValidationTest.java (Layer 4)
 ```
@@ -68,6 +71,36 @@ Locators live only inside page objects (`LoginPage`, `InventoryPage`) — tests
 never touch a `By` selector directly. `BaseTest` stores the `WebDriver` in a
 `ThreadLocal`, so the suite is safe to run in parallel without one test's
 browser session leaking into another's.
+
+`CheckoutWorkflowTest` extends the same page objects into full multi-page
+journeys — the kind of test a login-only suite can't demonstrate on its own:
+
+- **`shouldCompleteEndToEndPurchase`** — add an item, walk the full
+  inventory → cart → checkout-info → order-overview → confirmation chain,
+  and confirm the cart is actually empty afterward (not just that the
+  confirmation page said so).
+- **`shouldAddAndRemoveItemsFromCart`** — add two products, remove one
+  directly from the inventory page, and confirm only the remaining item
+  reaches the cart.
+- **`shouldSortProductsByPriceLowToHigh`** — select the price-ascending sort
+  option and verify the *actual displayed prices* are in order, not just
+  that the dropdown accepted the selection.
+- **`shouldBlockCheckoutWhenPostalCodeIsMissing`** — the negative-path
+  counterpart to the happy path above: submit checkout with a required field
+  blank and assert the validation error names the missing field.
+
+Each of these tests logs in independently and runs to completion on its own
+(see the class-level Javadoc in `CheckoutWorkflowTest` for why, in contrast
+to the API layer's `dependsOnMethods` chain below) — a reader can follow any
+one test top to bottom without needing to know what ran before it.
+
+> **Locator debugging note left in on purpose:** the add-to-cart XPath
+> initially matched nothing. Inspecting the live DOM (`element.getAttribute("outerHTML")`)
+> showed saucedemo renders the product-name `<div>`'s class attribute with a
+> trailing space (`class="inventory_item_name "`) — an exact `@class` match
+> in XPath fails against that. Fixed with `contains(@class, ...)` instead of
+> assuming the framework's assertion logic was wrong (see
+> `InventoryPage.addToCartButtonFor`).
 
 ### 3 — REST API test chaining
 

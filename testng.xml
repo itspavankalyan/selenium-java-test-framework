@@ -11,9 +11,10 @@
         <listener class-name="com.automation.framework.listeners.ExtentTestListener"/>
     </listeners>
 
-    <test name="UI-Login-Tests">
+    <test name="UI-Functional-Tests">
         <classes>
             <class name="com.automation.tests.ui.LoginTest"/>
+            <class name="com.automation.tests.ui.CheckoutWorkflowTest"/>
         </classes>
     </test>
 
