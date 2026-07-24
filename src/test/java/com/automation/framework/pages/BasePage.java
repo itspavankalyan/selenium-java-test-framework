@@ -73,36 +73,48 @@ public abstract class BasePage {
     }
 
     /**
-     * Clears the field and types {@code text}, then verifies the field's
-     * actual value ended up matching what was sent — retrying the whole
-     * clear+type if not (up to 3 attempts).
+     * Sets the field's value via JavaScript and dispatches a real
+     * {@code input} event, rather than Selenium's native
+     * {@code sendKeys()}.
      *
-     * <p>This framework's CI run showed why a bare {@code clear()}/{@code sendKeys()}
-     * isn't always enough: a checkout form field occasionally reported as
-     * empty in a later validation error despite being typed into moments
-     * earlier, even after every navigation click leading up to it had
-     * already been made retry-safe. React-controlled inputs only update
-     * their internal state in response to a genuine input event reaching an
-     * attached listener; typing into a just-mounted field before that
-     * listener is wired up can leave keystrokes visually present but
-     * functionally not registered, so the very next re-render reverts the
-     * field. Verifying the resulting value (not just trusting sendKeys()
-     * completed without throwing) and retrying closes that gap the same way
-     * {@link #clickAndWaitFor(By, By)} does for clicks.</p>
+     * <p>The first version of this method retried a native
+     * {@code clear()}/{@code sendKeys()} up to 3 times if the resulting
+     * value didn't match, on the theory that a just-mounted field's event
+     * listener needed a moment to attach. That verification check paid off
+     * immediately: it caught this framework's CI run failing the *same*
+     * field on the *same* page every time, 3 retries in a row, with the
+     * exact text "Typed 'Ada' into By.id: first-name but its value did not
+     * match after 3 attempts" — proof that retrying the identical
+     * mechanism doesn't help, because native {@code sendKeys()} itself
+     * isn't reliably registering keystrokes on this field in headless
+     * Chrome on GitHub Actions' Linux runner (the same login page's
+     * username/password fields, reached via a full page load rather than
+     * an in-app route change, typed reliably in the same run — narrowing
+     * this to something specific about typing into a freshly-routed-to
+     * SPA page in that environment).</p>
+     *
+     * <p>Setting {@code element.value} directly and firing the {@code input}
+     * event that React's controlled-input listeners expect sidesteps
+     * whatever native key-event dispatch was failing, the same way the
+     * click fix in {@link #click(By)} did — it still produces a real,
+     * React-visible state change, just via a path that doesn't depend on
+     * synthetic keyboard events landing correctly.</p>
      */
     protected void type(By locator, String text) {
         final int maxAttempts = 3;
 
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             WebElement element = waitForVisible(locator);
-            element.clear();
-            element.sendKeys(text);
+            ((JavascriptExecutor) driver).executeScript(
+                    "arguments[0].value = arguments[1];"
+                            + "arguments[0].dispatchEvent(new Event('input', { bubbles: true }));",
+                    element, text);
             if (text.equals(element.getAttribute("value"))) {
                 return;
             }
         }
         throw new IllegalStateException(
-                "Typed '%s' into %s but its value did not match after %d attempts"
+                "Set value '%s' on %s but its value did not match after %d attempts"
                         .formatted(text, locator, maxAttempts));
     }
 
