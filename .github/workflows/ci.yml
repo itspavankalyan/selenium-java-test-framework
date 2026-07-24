@@ -49,6 +49,13 @@ jobs:
           name: ui-surefire-report
           path: target/surefire-reports/
 
+      - name: Upload Extent HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-extent-report
+          path: target/extent-reports/
+
   api-tests:
     name: API Tests (RestAssured / restful-booker)
     runs-on: ubuntu-latest
@@ -72,6 +79,13 @@ jobs:
           name: api-surefire-report
           path: target/surefire-reports/
 
+      - name: Upload Extent HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-extent-report
+          path: target/extent-reports/
+
   db-tests:
     name: DB Validation Tests (JDBC / H2)
     runs-on: ubuntu-latest
@@ -94,3 +108,10 @@ jobs:
         with:
           name: db-surefire-report
           path: target/surefire-reports/
+
+      - name: Upload Extent HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-extent-report
+          path: target/extent-reports/

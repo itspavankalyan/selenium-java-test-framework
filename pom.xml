@@ -5,7 +5,7 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.portfolio</groupId>
+    <groupId>com.automation</groupId>
     <artifactId>selenium-java-test-framework</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
@@ -32,6 +32,7 @@
         <opencsv.version>5.9</opencsv.version>
         <slf4j.version>2.0.16</slf4j.version>
         <logback.version>1.5.12</logback.version>
+        <extentreports.version>5.1.2</extentreports.version>
         <surefire.version>3.5.2</surefire.version>
     </properties>
 
@@ -93,6 +94,15 @@
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
             <version>${logback.version}</version>
+        </dependency>
+
+        <!-- ================= TEST REPORTING ================= -->
+        <!-- Self-contained HTML report with screenshots embedded inline (base64) —
+             no external CLI or CI publishing step required, just open the file. -->
+        <dependency>
+            <groupId>com.aventstack</groupId>
+            <artifactId>extentreports</artifactId>
+            <version>${extentreports.version}</version>
         </dependency>
     </dependencies>
 

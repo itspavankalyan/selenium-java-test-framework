@@ -7,21 +7,25 @@
     reporting their own pass/fail independently.
 -->
 <suite name="SeleniumJavaTestFrameworkSuite" verbose="1">
+    <listeners>
+        <listener class-name="com.automation.framework.listeners.ExtentTestListener"/>
+    </listeners>
+
     <test name="UI-Login-Tests">
         <classes>
-            <class name="com.portfolio.tests.ui.LoginTest"/>
+            <class name="com.automation.tests.ui.LoginTest"/>
         </classes>
     </test>
 
     <test name="API-Booking-Chain-Tests">
         <classes>
-            <class name="com.portfolio.tests.api.BookingApiChainTest"/>
+            <class name="com.automation.tests.api.BookingApiChainTest"/>
         </classes>
     </test>
 
     <test name="DB-Validation-Tests">
         <classes>
-            <class name="com.portfolio.tests.db.BookingDatabaseValidationTest"/>
+            <class name="com.automation.tests.db.BookingDatabaseValidationTest"/>
         </classes>
     </test>
 </suite>

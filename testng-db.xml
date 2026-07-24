@@ -1,9 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
 <suite name="DbSuite" verbose="1">
+    <listeners>
+        <listener class-name="com.automation.framework.listeners.ExtentTestListener"/>
+    </listeners>
+
     <test name="DB-Validation-Tests">
         <classes>
-            <class name="com.portfolio.tests.db.BookingDatabaseValidationTest"/>
+            <class name="com.automation.tests.db.BookingDatabaseValidationTest"/>
         </classes>
     </test>
 </suite>

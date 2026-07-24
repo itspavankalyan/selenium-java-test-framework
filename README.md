@@ -17,11 +17,11 @@ scripts:
 
 ## Why this project exists
 
-Most portfolio automation repos are a grab-bag of unrelated scripts — a login
-test here, an isolated API GET there. This repo is built the other way
-around: one framework, where each layer builds on the one below it, closer to
-how a real test framework grows inside a company. The goal is a repo that
-holds up under a code review, not just a repo that runs.
+Many automation repos are a grab-bag of unrelated scripts — a login test
+here, an isolated API GET there. This repo is built the other way around:
+one framework, where each layer builds on the one below it, closer to how a
+real test framework grows inside a company. The goal is a repo that holds up
+under a code review, not just a repo that runs.
 
 ## Architecture
 
@@ -35,14 +35,15 @@ selenium-java-test-framework/
 │   ├── config.properties            # Central config (browser, base URLs, DB, etc.)
 │   ├── testdata/login_test_data.csv # Data-driven login scenarios
 │   └── db/schema.sql                # H2 audit table DDL
-└── src/test/java/com/portfolio/
+└── src/test/java/com/automation/
     ├── framework/
     │   ├── base/       # DriverFactory, BaseTest (ThreadLocal WebDriver), ScreenshotUtil
     │   ├── config/     # ConfigReader
     │   ├── pages/       # Page objects (BasePage, LoginPage, InventoryPage)
     │   ├── utils/       # CsvTestDataReader, LoginCredentials
     │   ├── api/         # BookingApiClient + request/response models
-    │   └── db/          # DbConnectionManager, BookingAuditRepository
+    │   ├── db/          # DbConnectionManager, BookingAuditRepository
+    │   └── listeners/   # ExtentManager, ExtentTestListener (HTML reporting)
     └── tests/
         ├── ui/   LoginTest.java                    (Layer 1 + 2)
         ├── api/  BookingApiChainTest.java           (Layer 3)
@@ -108,19 +109,36 @@ query in this layer is a real JDBC round-trip against a real database — only
 the *source of truth being reconciled against* is a stand-in for
 infrastructure a public demo API can't reasonably provide.
 
+### Test reporting
+
+Every suite run produces a self-contained **ExtentReports** HTML report at
+`target/extent-reports/ExtentReport.html` — no external CLI or hosting step
+needed, just open the file in a browser. Wired up via `ExtentTestListener`
+(a TestNG `ITestListener` registered in each suite XML's `<listeners>`
+block), which:
+
+- logs a pass/fail/skip entry for every test method, with the test's
+  `description` attribute shown alongside it,
+- on any UI test failure, captures the browser screenshot **once** as raw
+  bytes and reuses those bytes for two things: embedding it inline in the
+  report (base64) and saving it to `target/screenshots/` for CI artifact
+  upload (see `ScreenshotUtil`),
+- on API/DB test failures (no browser involved), attaches the exception
+  itself as the failure evidence instead.
+
 ### 5 — CI/CD pipeline
 
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push/PR
 to `main` as three independent jobs — one per layer — so a UI flake doesn't
 mask whether the API and DB layers are green:
 
-- **ui-tests** — headless Chrome against saucedemo.com; uploads a screenshot
-  artifact automatically on any failure (see `ScreenshotUtil`)
+- **ui-tests** — headless Chrome against saucedemo.com
 - **api-tests** — the restful-booker chain
 - **db-tests** — the H2 validation flow
 
-Each job uploads its Surefire report as a build artifact regardless of
-outcome.
+Each job uploads its Surefire report and its Extent HTML report as build
+artifacts regardless of outcome, and the UI job additionally uploads raw
+failure screenshots.
 
 ## Running locally
 
@@ -150,5 +168,6 @@ Requires Java 17+ and Maven. No local browser driver setup needed —
 | API testing           | REST Assured                              |
 | Database              | H2 (file mode), plain JDBC                |
 | Test data             | OpenCSV, Jackson                          |
+| Reporting              | ExtentReports (HTML, with embedded screenshots) |
 | Logging               | SLF4J + Logback                           |
 | CI                    | GitHub Actions                            |
