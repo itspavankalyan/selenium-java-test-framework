@@ -2,6 +2,7 @@ package com.automation.framework.pages;
 
 import com.automation.framework.config.ConfigReader;
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
@@ -40,8 +41,33 @@ public abstract class BasePage {
         return wait.until(ExpectedConditions.elementToBeClickable(locator));
     }
 
+    /**
+     * Clicks via JavaScript ({@code element.click()} executed in-page) rather
+     * than Selenium's native {@code WebElement.click()}.
+     *
+     * <p>This framework's own CI run surfaced why: on GitHub Actions' headless
+     * Linux runner, a handful of clicks (the cart link, the Checkout button,
+     * a cart Remove button) were accepted by {@link #waitForClickable(By)}
+     * without error, yet produced no effect — the browser was still on the
+     * exact same page/state afterward, confirmed by inspecting the
+     * automatically-captured failure screenshots. That combination — no
+     * exception, no state change — points at Selenium's native click
+     * dispatching a synthetic mouse event at the element's computed
+     * bounding-box center, which can silently miss in headless environments
+     * where rendering/scroll positioning differs subtly from a normal
+     * desktop browser. It never reproduced locally (including in headless
+     * mode on this machine), which is consistent with a rendering-environment
+     * difference rather than an application bug.</p>
+     *
+     * <p>A JS-executed click sidesteps that coordinate-based dispatch
+     * entirely by invoking the element's click() method directly in the
+     * page's own JS context — it still fires a real {@code click} event that
+     * React's event delegation picks up exactly the same way, so this is a
+     * more reliable trigger, not a weaker one.</p>
+     */
     protected void click(By locator) {
-        waitForClickable(locator).click();
+        WebElement element = waitForClickable(locator);
+        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", element);
     }
 
     protected void type(By locator, String text) {
