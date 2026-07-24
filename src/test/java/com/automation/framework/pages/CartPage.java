@@ -47,7 +47,7 @@ public class CartPage {
     }
 
     public CheckoutInformationPage proceedToCheckout() {
-        actions.click(CHECKOUT_BUTTON);
+        actions.clickAndWaitFor(CHECKOUT_BUTTON, By.id("first-name"));
         return new CheckoutInformationPage(driver);
     }
 }

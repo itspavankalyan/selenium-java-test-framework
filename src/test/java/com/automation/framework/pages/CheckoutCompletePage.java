@@ -29,7 +29,7 @@ public class CheckoutCompletePage {
     }
 
     public InventoryPage backToProducts() {
-        actions.click(BACK_HOME_BUTTON);
+        actions.clickAndWaitFor(BACK_HOME_BUTTON, By.id("inventory_container"));
         return new InventoryPage(driver);
     }
 }

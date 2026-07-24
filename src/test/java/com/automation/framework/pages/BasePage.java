@@ -3,8 +3,10 @@ package com.automation.framework.pages;
 import com.automation.framework.config.ConfigReader;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.ui.ExpectedCondition;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
@@ -83,24 +85,53 @@ public abstract class BasePage {
     protected boolean isDisplayed(By locator) {
         try {
             return waitForVisible(locator).isDisplayed();
-        } catch (org.openqa.selenium.TimeoutException e) {
+        } catch (TimeoutException e) {
             return false;
         }
     }
 
     /**
-     * Waits until the element at {@code locator} contains {@code expectedText}.
+     * Clicks {@code trigger} and waits for {@code expectedOutcome} to become
+     * visible, re-clicking (up to 3 total attempts) if it doesn't show up
+     * within a short per-attempt window.
      *
-     * <p>Distinct from {@link #waitForVisible(By)} on purpose: an element can
-     * be visible with *stale* content the instant after a click triggers a
-     * client-side re-render (e.g. a cart badge that still shows the
-     * pre-removal count for a few hundred milliseconds). Waiting only for
-     * visibility passes immediately in that case and reads the old value —
-     * this method instead polls until the actual expected state appears,
-     * which is what genuinely confirms the app finished processing the
-     * action rather than just rendering *something*.</p>
+     * <p>Switching to a JS-executed {@link #click(By)} fixed most, but not
+     * all, of the CI-only click flakiness this framework hit on GitHub
+     * Actions' headless Linux runner. A second, related failure mode
+     * remained: occasionally a click on a "Continue"/checkout-style button
+     * fired before React had finished committing state from the
+     * {@link #type(By, String)} calls just before it (or before a
+     * just-mounted page's event handlers were fully attached after a route
+     * change) — same underlying "the app wasn't quite ready yet" class of
+     * race, just manifesting as a stale read instead of a dead click. A
+     * single retry naturally inserts the extra beat of time React needed;
+     * this is the standard, honest fix for that class of problem — retrying
+     * the *action*, not lengthening a wait that was never going to help
+     * (the first attempt wasn't slow, it was ineffective).</p>
      */
-    protected void waitForTextToContain(By locator, String expectedText) {
-        wait.until(ExpectedConditions.textToBePresentInElementLocated(locator, expectedText));
+    protected void clickAndWaitFor(By trigger, By expectedOutcome) {
+        retryClickUntil(trigger, ExpectedConditions.visibilityOfElementLocated(expectedOutcome));
+    }
+
+    /** Same retry rationale as {@link #clickAndWaitFor(By, By)}, for actions confirmed by a text change (e.g. a button's own label flipping) rather than a different element appearing. */
+    protected void clickAndWaitForText(By trigger, By target, String expectedText) {
+        retryClickUntil(trigger, ExpectedConditions.textToBePresentInElementLocated(target, expectedText));
+    }
+
+    private void retryClickUntil(By trigger, ExpectedCondition<?> condition) {
+        final int maxAttempts = 3;
+        final Duration perAttemptTimeout = Duration.ofSeconds(5);
+        TimeoutException lastFailure = null;
+
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            click(trigger);
+            try {
+                new WebDriverWait(driver, perAttemptTimeout).until(condition);
+                return;
+            } catch (TimeoutException e) {
+                lastFailure = e;
+            }
+        }
+        throw lastFailure;
     }
 }

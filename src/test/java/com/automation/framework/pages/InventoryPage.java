@@ -85,26 +85,21 @@ public class InventoryPage {
      * a failure trace and immune to id-encoding quirks.
      *
      * <p>Waits for the button's own label to flip to "Remove" before
-     * returning, rather than trusting that the click alone means the app has
-     * finished processing it. saucedemo re-renders this button client-side;
-     * on a fast machine the re-render is effectively instant, but on a
-     * slower CI runner there's a real (if brief) window where the button —
-     * and anything derived from this action, like the cart badge count — is
-     * still visible with its *pre-click* state. Waiting for the label change
-     * is what actually confirms the add succeeded.</p>
+     * returning, re-clicking if it hasn't within a few seconds, rather than
+     * trusting that a single click means the app has finished processing it
+     * — see {@code BasePage.clickAndWaitForText} for why a bare click isn't
+     * reliable enough here on a CI runner.</p>
      */
     public InventoryPage addProductToCart(String productName) {
         By button = addToCartButtonFor(productName);
-        actions.click(button);
-        actions.waitForTextToContain(button, "Remove");
+        actions.clickAndWaitForText(button, button, "Remove");
         return this;
     }
 
-    /** Mirror of {@link #addProductToCart(String)} — saucedemo swaps the same button's label back to "Add to cart" once removed; see that method's Javadoc for why this waits on the label rather than the click alone. */
+    /** Mirror of {@link #addProductToCart(String)} — saucedemo swaps the same button's label back to "Add to cart" once removed; see that method's Javadoc for why this retries until the label actually changes. */
     public InventoryPage removeProductFromCart(String productName) {
         By button = removeButtonFor(productName);
-        actions.click(button);
-        actions.waitForTextToContain(button, "Add to cart");
+        actions.clickAndWaitForText(button, button, "Add to cart");
         return this;
     }
 
@@ -117,7 +112,10 @@ public class InventoryPage {
     }
 
     public CartPage goToCart() {
-        actions.click(CART_LINK);
+        // clickAndWaitFor (not plain click): see BasePage's Javadoc — a bare
+        // click here was the first symptom of the CI-only navigation race
+        // this framework hit, so the fix belongs at every navigation trigger.
+        actions.clickAndWaitFor(CART_LINK, By.id("checkout"));
         return new CartPage(driver);
     }
 

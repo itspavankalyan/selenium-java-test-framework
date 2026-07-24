@@ -41,15 +41,28 @@ public class CheckoutInformationPage {
         return this;
     }
 
-    /** Happy path: all three fields already filled in, submit and move to the order overview. */
+    /**
+     * Happy path: all three fields already filled in, submit and move to the
+     * order overview. Uses {@code clickAndWaitFor} (see BasePage) rather than
+     * a bare click — this exact button is where this framework's CI run
+     * discovered the "clicked too soon after typing" race, since a click
+     * fired immediately after {@link #fillShippingDetails} can occasionally
+     * read stale (pre-update) form state.
+     */
     public CheckoutOverviewPage continueToOverview() {
-        actions.click(CONTINUE_BUTTON);
+        actions.clickAndWaitFor(CONTINUE_BUTTON, By.id("finish"));
         return new CheckoutOverviewPage(driver);
     }
 
-    /** Negative path: submit with an incomplete form and stay here to assert the validation error. */
+    /**
+     * Negative path: submit with an incomplete form and stay here to assert
+     * the validation error. The "destination" {@code clickAndWaitFor} waits
+     * for here is the error banner itself — for the same reason as
+     * {@link #continueToOverview()}, a bare click risked reading stale form
+     * state and misreporting *which* field the app thinks is missing.
+     */
     public CheckoutInformationPage continueExpectingValidationError() {
-        actions.click(CONTINUE_BUTTON);
+        actions.clickAndWaitFor(CONTINUE_BUTTON, ERROR_MESSAGE);
         return this;
     }
 

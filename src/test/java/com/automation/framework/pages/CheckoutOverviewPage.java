@@ -41,7 +41,7 @@ public class CheckoutOverviewPage {
     }
 
     public CheckoutCompletePage finishOrder() {
-        actions.click(FINISH_BUTTON);
+        actions.clickAndWaitFor(FINISH_BUTTON, By.className("complete-header"));
         return new CheckoutCompletePage(driver);
     }
 }
