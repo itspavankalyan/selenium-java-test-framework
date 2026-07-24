@@ -61,4 +61,20 @@ public abstract class BasePage {
             return false;
         }
     }
+
+    /**
+     * Waits until the element at {@code locator} contains {@code expectedText}.
+     *
+     * <p>Distinct from {@link #waitForVisible(By)} on purpose: an element can
+     * be visible with *stale* content the instant after a click triggers a
+     * client-side re-render (e.g. a cart badge that still shows the
+     * pre-removal count for a few hundred milliseconds). Waiting only for
+     * visibility passes immediately in that case and reads the old value —
+     * this method instead polls until the actual expected state appears,
+     * which is what genuinely confirms the app finished processing the
+     * action rather than just rendering *something*.</p>
+     */
+    protected void waitForTextToContain(By locator, String expectedText) {
+        wait.until(ExpectedConditions.textToBePresentInElementLocated(locator, expectedText));
+    }
 }

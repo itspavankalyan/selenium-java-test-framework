@@ -27,6 +27,11 @@ public class CheckoutInformationPage {
         this.driver = driver;
         this.actions = new BasePage(driver) {
         };
+        // Confirms the SPA has actually navigated here (rather than still
+        // being on the cart page) before any field is touched — see
+        // CartPage's Javadoc for the class of race this class of wait guards
+        // against across every page object in this checkout flow.
+        actions.waitForVisible(FIRST_NAME_INPUT);
     }
 
     public CheckoutInformationPage fillShippingDetails(String firstName, String lastName, String postalCode) {

@@ -83,15 +83,28 @@ public class InventoryPage {
      * a slug, e.g. parentheses and dots for "Test.allTheThings() T-Shirt").
      * Locating by the name actually shown on screen is both more readable in
      * a failure trace and immune to id-encoding quirks.
+     *
+     * <p>Waits for the button's own label to flip to "Remove" before
+     * returning, rather than trusting that the click alone means the app has
+     * finished processing it. saucedemo re-renders this button client-side;
+     * on a fast machine the re-render is effectively instant, but on a
+     * slower CI runner there's a real (if brief) window where the button —
+     * and anything derived from this action, like the cart badge count — is
+     * still visible with its *pre-click* state. Waiting for the label change
+     * is what actually confirms the add succeeded.</p>
      */
     public InventoryPage addProductToCart(String productName) {
-        actions.click(addToCartButtonFor(productName));
+        By button = addToCartButtonFor(productName);
+        actions.click(button);
+        actions.waitForTextToContain(button, "Remove");
         return this;
     }
 
-    /** Mirror of {@link #addProductToCart(String)} — saucedemo swaps the button's label/id to "Remove" once an item is in the cart. */
+    /** Mirror of {@link #addProductToCart(String)} — saucedemo swaps the same button's label back to "Add to cart" once removed; see that method's Javadoc for why this waits on the label rather than the click alone. */
     public InventoryPage removeProductFromCart(String productName) {
-        actions.click(removeButtonFor(productName));
+        By button = removeButtonFor(productName);
+        actions.click(button);
+        actions.waitForTextToContain(button, "Add to cart");
         return this;
     }
 

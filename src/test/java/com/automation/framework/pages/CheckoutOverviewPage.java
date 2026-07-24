@@ -21,6 +21,9 @@ public class CheckoutOverviewPage {
         this.driver = driver;
         this.actions = new BasePage(driver) {
         };
+        // See CartPage's Javadoc for why every checkout-flow page object
+        // waits for one of its own defining elements before doing anything else.
+        actions.waitForVisible(FINISH_BUTTON);
     }
 
     public int getItemCount() {
