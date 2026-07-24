@@ -73,49 +73,64 @@ public abstract class BasePage {
     }
 
     /**
-     * Sets the field's value via JavaScript and dispatches a real
-     * {@code input} event, rather than Selenium's native
-     * {@code sendKeys()}.
+     * Types into a field, verifying the resulting value and falling back to
+     * a different mechanism if it doesn't match — rather than trusting that
+     * {@code sendKeys()} completing without an exception means the field is
+     * actually filled.
      *
-     * <p>The first version of this method retried a native
-     * {@code clear()}/{@code sendKeys()} up to 3 times if the resulting
-     * value didn't match, on the theory that a just-mounted field's event
-     * listener needed a moment to attach. That verification check paid off
-     * immediately: it caught this framework's CI run failing the *same*
-     * field on the *same* page every time, 3 retries in a row, with the
-     * exact text "Typed 'Ada' into By.id: first-name but its value did not
-     * match after 3 attempts" — proof that retrying the identical
-     * mechanism doesn't help, because native {@code sendKeys()} itself
-     * isn't reliably registering keystrokes on this field in headless
-     * Chrome on GitHub Actions' Linux runner (the same login page's
-     * username/password fields, reached via a full page load rather than
-     * an in-app route change, typed reliably in the same run — narrowing
-     * this to something specific about typing into a freshly-routed-to
-     * SPA page in that environment).</p>
+     * <p>This method's history is worth reading before changing it again.
+     * Native {@code clear()}/{@code sendKeys()} is the first attempt because
+     * it's the mechanism proven reliable across dozens of CI runs for the
+     * login page's username/password fields — replacing it outright (an
+     * earlier version of this method did exactly that, switching everything
+     * to JS-set {@code element.value}) broke those previously rock-solid
+     * fields instead of fixing the checkout page's flaky one: directly
+     * assigning {@code element.value} doesn't go through the setter React
+     * overrides on a controlled input to track its own state, so React's
+     * internal value can end up out of sync with the DOM even though a
+     * plain {@code input} event was dispatched — a well-documented React
+     * quirk, not specific to this app.</p>
      *
-     * <p>Setting {@code element.value} directly and firing the {@code input}
-     * event that React's controlled-input listeners expect sidesteps
-     * whatever native key-event dispatch was failing, the same way the
-     * click fix in {@link #click(By)} did — it still produces a real,
-     * React-visible state change, just via a path that doesn't depend on
-     * synthetic keyboard events landing correctly.</p>
+     * <p>The actual, narrower problem — proven by this same verification
+     * catching "Typed 'Ada' into By.id: first-name but its value did not
+     * match after 3 attempts" on CI, with the identical native mechanism
+     * failing all 3 retries — is that native {@code sendKeys()} isn't
+     * reliably registering keystrokes on a field reached via an in-app
+     * route change (as opposed to a full page load) in headless Chrome on
+     * GitHub Actions' Linux runner. So the fallback here uses the
+     * React-safe way to set a controlled input's value from outside React:
+     * call the native {@code HTMLInputElement.prototype.value} setter
+     * directly (bypassing React's override) before dispatching the
+     * {@code input} event, which keeps React's internal tracking correctly
+     * in sync. Native {@code sendKeys()} stays the default for every field
+     * that doesn't need the fallback.</p>
      */
     protected void type(By locator, String text) {
         final int maxAttempts = 3;
 
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             WebElement element = waitForVisible(locator);
-            ((JavascriptExecutor) driver).executeScript(
-                    "arguments[0].value = arguments[1];"
-                            + "arguments[0].dispatchEvent(new Event('input', { bubbles: true }));",
-                    element, text);
+            if (attempt == 1) {
+                element.clear();
+                element.sendKeys(text);
+            } else {
+                setValueReactSafe(element, text);
+            }
             if (text.equals(element.getAttribute("value"))) {
                 return;
             }
         }
         throw new IllegalStateException(
-                "Set value '%s' on %s but its value did not match after %d attempts"
+                "Typed '%s' into %s but its value did not match after %d attempts"
                         .formatted(text, locator, maxAttempts));
+    }
+
+    private void setValueReactSafe(WebElement element, String text) {
+        ((JavascriptExecutor) driver).executeScript(
+                "var nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;"
+                        + "nativeSetter.call(arguments[0], arguments[1]);"
+                        + "arguments[0].dispatchEvent(new Event('input', { bubbles: true }));",
+                element, text);
     }
 
     protected String textOf(By locator) {

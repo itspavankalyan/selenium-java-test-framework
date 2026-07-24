@@ -1,6 +1,7 @@
 package com.automation.tests.ui;
 
 import com.automation.framework.base.BaseTest;
+import com.automation.framework.listeners.ExtentTestListener;
 import com.automation.framework.pages.CartPage;
 import com.automation.framework.pages.CheckoutCompletePage;
 import com.automation.framework.pages.CheckoutInformationPage;
@@ -47,14 +48,17 @@ public class CheckoutWorkflowTest extends BaseTest {
     @Test(description = "Full purchase journey: add an item, check out, confirm the order, and land back on a now-empty cart")
     public void shouldCompleteEndToEndPurchase() {
         InventoryPage inventoryPage = loginAsStandardUser();
+        ExtentTestListener.logStep("Logged in as '%s' and reached the inventory page".formatted(STANDARD_USER));
 
         inventoryPage.addProductToCart(BACKPACK);
         Assert.assertEquals(inventoryPage.getCartBadgeCount(), 1,
                 "Expected the cart badge to reflect the one item just added");
+        ExtentTestListener.logStep("Added '%s' to the cart".formatted(BACKPACK));
 
         CartPage cartPage = inventoryPage.goToCart();
         Assert.assertEquals(cartPage.getItemNames(), List.of(BACKPACK),
                 "Expected the cart to contain exactly the item added on the inventory page");
+        ExtentTestListener.logStep("Opened the cart and confirmed it contains '%s'".formatted(BACKPACK));
 
         CheckoutInformationPage checkoutInfo = cartPage.proceedToCheckout();
         CheckoutOverviewPage overview = checkoutInfo
@@ -64,10 +68,12 @@ public class CheckoutWorkflowTest extends BaseTest {
         Assert.assertEquals(overview.getItemCount(), 1, "Expected one item carried through to the order overview");
         Assert.assertTrue(overview.getTotalLabel().contains("Total:"),
                 "Expected a 'Total:' summary line before the order is finalised");
+        ExtentTestListener.logStep("Filled shipping details and reached the order overview");
 
         CheckoutCompletePage confirmation = overview.finishOrder();
         Assert.assertTrue(confirmation.getConfirmationHeader().contains("Thank you"),
                 "Expected a thank-you confirmation once the order is placed");
+        ExtentTestListener.logStep("Order confirmed: " + confirmation.getConfirmationHeader());
 
         // Round-trip back to the product list and confirm the cart was cleared
         // server-side as part of completing the order — not just that the
@@ -83,6 +89,7 @@ public class CheckoutWorkflowTest extends BaseTest {
 
         inventoryPage.addProductToCart(BACKPACK).addProductToCart(BIKE_LIGHT);
         Assert.assertEquals(inventoryPage.getCartBadgeCount(), 2, "Expected the badge to count both added items");
+        ExtentTestListener.logStep("Added '%s' and '%s' to the cart".formatted(BACKPACK, BIKE_LIGHT));
 
         // saucedemo re-labels the same button "Remove" once an item is in the
         // cart (see InventoryPage.removeProductFromCart) rather than exposing

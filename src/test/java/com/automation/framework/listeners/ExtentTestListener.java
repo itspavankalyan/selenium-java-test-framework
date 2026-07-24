@@ -41,13 +41,16 @@ public class ExtentTestListener implements ITestListener {
 
     @Override
     public void onTestSuccess(ITestResult result) {
-        CURRENT_TEST.get().log(Status.PASS, "Test passed");
+        // Attach a screenshot of the final passing state for UI tests, not
+        // just a "Test passed" line — a report meant to be read by someone
+        // who didn't watch the run should show what success actually looked
+        // like (e.g. the inventory page after login), the same way a
+        // failure gets a screenshot of what went wrong.
+        attachScreenshotIfAvailable(Status.PASS, "Test passed");
     }
 
     @Override
     public void onTestFailure(ITestResult result) {
-        ExtentTest test = CURRENT_TEST.get();
-
         // Only UI tests (subclasses of BaseTest) have a live browser to screenshot;
         // API/DB test failures fall through to a plain exception log, which is the
         // right evidence for that layer (request/response payload, SQL state, etc.
@@ -55,6 +58,7 @@ public class ExtentTestListener implements ITestListener {
         WebDriver driver = BaseTest.getCurrentDriver();
         byte[] screenshotBytes = driver != null ? ScreenshotUtil.captureAsBytes(driver) : null;
 
+        ExtentTest test = CURRENT_TEST.get();
         if (screenshotBytes != null) {
             ScreenshotUtil.saveToFile(screenshotBytes, result.getMethod().getMethodName());
             String base64Screenshot = Base64.getEncoder().encodeToString(screenshotBytes);
@@ -82,5 +86,46 @@ public class ExtentTestListener implements ITestListener {
     @Override
     public void onFinish(ITestContext context) {
         ExtentManager.getInstance().flush();
+    }
+
+    /**
+     * Logs a checkpoint (e.g. "Logged in as standard_user", "Added Sauce
+     * Labs Backpack to cart") to the currently-running test's report node,
+     * with a screenshot attached if a browser is active.
+     *
+     * <p>Call this from test code at the moment a meaningful step completes
+     * — the pass/fail summary alone doesn't show *what happened along the
+     * way*, and a reader of the report (a recruiter, a teammate debugging a
+     * failure after the fact) shouldn't have to re-run the suite just to see
+     * what the login page or the cart looked like mid-test.</p>
+     */
+    public static void logStep(String message) {
+        WebDriver driver = BaseTest.getCurrentDriver();
+        byte[] screenshotBytes = driver != null ? ScreenshotUtil.captureAsBytes(driver) : null;
+        ExtentTest test = CURRENT_TEST.get();
+        if (test == null) {
+            return;
+        }
+        if (screenshotBytes != null) {
+            String base64Screenshot = Base64.getEncoder().encodeToString(screenshotBytes);
+            test.log(Status.INFO, message,
+                    MediaEntityBuilder.createScreenCaptureFromBase64String(base64Screenshot).build());
+        } else {
+            test.log(Status.INFO, message);
+        }
+    }
+
+    private void attachScreenshotIfAvailable(Status status, String message) {
+        WebDriver driver = BaseTest.getCurrentDriver();
+        byte[] screenshotBytes = driver != null ? ScreenshotUtil.captureAsBytes(driver) : null;
+        ExtentTest test = CURRENT_TEST.get();
+
+        if (screenshotBytes != null) {
+            String base64Screenshot = Base64.getEncoder().encodeToString(screenshotBytes);
+            test.log(status, message,
+                    MediaEntityBuilder.createScreenCaptureFromBase64String(base64Screenshot).build());
+        } else {
+            test.log(status, message);
+        }
     }
 }

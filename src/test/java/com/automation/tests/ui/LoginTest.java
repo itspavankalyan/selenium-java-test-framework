@@ -1,6 +1,7 @@
 package com.automation.tests.ui;
 
 import com.automation.framework.base.BaseTest;
+import com.automation.framework.listeners.ExtentTestListener;
 import com.automation.framework.pages.InventoryPage;
 import com.automation.framework.pages.LoginPage;
 import com.automation.framework.utils.CsvTestDataReader;
@@ -47,6 +48,9 @@ public class LoginTest extends BaseTest {
                     credentials.getTestCaseId() + ": expected inventory page to load for a valid login");
             Assert.assertTrue(inventoryPage.getProductCount() > 0,
                     credentials.getTestCaseId() + ": expected product listing to be non-empty");
+
+            ExtentTestListener.logStep(
+                    "Logged in as '%s' and reached the inventory page".formatted(credentials.getUsername()));
         } else {
             loginPage.loginAs(credentials.getUsername(), credentials.getPassword());
 
