@@ -72,10 +72,38 @@ public abstract class BasePage {
         ((JavascriptExecutor) driver).executeScript("arguments[0].click();", element);
     }
 
+    /**
+     * Clears the field and types {@code text}, then verifies the field's
+     * actual value ended up matching what was sent — retrying the whole
+     * clear+type if not (up to 3 attempts).
+     *
+     * <p>This framework's CI run showed why a bare {@code clear()}/{@code sendKeys()}
+     * isn't always enough: a checkout form field occasionally reported as
+     * empty in a later validation error despite being typed into moments
+     * earlier, even after every navigation click leading up to it had
+     * already been made retry-safe. React-controlled inputs only update
+     * their internal state in response to a genuine input event reaching an
+     * attached listener; typing into a just-mounted field before that
+     * listener is wired up can leave keystrokes visually present but
+     * functionally not registered, so the very next re-render reverts the
+     * field. Verifying the resulting value (not just trusting sendKeys()
+     * completed without throwing) and retrying closes that gap the same way
+     * {@link #clickAndWaitFor(By, By)} does for clicks.</p>
+     */
     protected void type(By locator, String text) {
-        WebElement element = waitForVisible(locator);
-        element.clear();
-        element.sendKeys(text);
+        final int maxAttempts = 3;
+
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            WebElement element = waitForVisible(locator);
+            element.clear();
+            element.sendKeys(text);
+            if (text.equals(element.getAttribute("value"))) {
+                return;
+            }
+        }
+        throw new IllegalStateException(
+                "Typed '%s' into %s but its value did not match after %d attempts"
+                        .formatted(text, locator, maxAttempts));
     }
 
     protected String textOf(By locator) {
